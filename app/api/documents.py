@@ -19,14 +19,14 @@ def upload_document(
     role_access: str = "engineering",
     user=Depends(get_current_user),
 ):
-    # 1. Validate file type
+    # 1. Validate file
     if not is_allowed_file(file.filename):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Unsupported file type",
         )
 
-    # 2. Save file to disk
+    # 2. Save file
     file_id = str(uuid.uuid4())
     file_path = f"{UPLOAD_DIR}/{file_id}_{file.filename}"
 
@@ -50,6 +50,7 @@ def upload_document(
             "metadata": {
                 "file": file.filename,
                 "role": role_access,
+                "content": chunk,  # REQUIRED for RAG
             },
         }
         for chunk in chunks
@@ -61,7 +62,7 @@ def upload_document(
 
     embeddings = embed_texts(texts)
 
-    # 6. Store in FAISS
+    # 6. Store embeddings in FAISS
     vector_store = VectorStore(dim=len(embeddings[0]))
     vector_store.load()
     vector_store.add(embeddings, metadata)
@@ -73,7 +74,7 @@ def upload_document(
     }
 
 
-# -------- DAY 3 TEST ENDPOINT (TEMPORARY) --------
+# ---------- DAY 3 SEARCH ENDPOINT ----------
 
 @router.post("/search")
 def search_documents(
@@ -89,4 +90,3 @@ def search_documents(
         "count": len(results),
         "results": results,
     }
-
